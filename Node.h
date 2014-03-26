@@ -29,13 +29,15 @@ typedef struct Node
 {
 	Node() : mIsWhiteTurn(true) { };
 	Node(bool inIsWhiteTurn) : mIsWhiteTurn(inIsWhiteTurn) { };
+	Node(const Node& inNode);
 
 	void AddPiece(int x, int y, char type);
 	const Piece GetPieceAtCoord(int inX, int inY) const;	
 	void MovePieceToCoord(int inIndex, int inX, int inY);
 	void RemovePieceAtCoord( int inX, int inY);
-	void ExpandForWhiteTurn();
-	void Expand(const std::vector<Piece> &myPieces);
+	bool PiecesReachedY(const std::vector<Piece> &inPieces, const int inY);
+	int ExpandForWhiteTurn();
+	int Expand(const std::vector<Piece> &myPieces);
 
 	friend std::ostream& operator<< (std::ostream& os, const Node& n);
 	

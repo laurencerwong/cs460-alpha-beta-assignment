@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-g -Wall
 
-all: main.o node.o
+all: 
 	$(CC) $(CFLAGS) main.cpp node.cpp -o main
 

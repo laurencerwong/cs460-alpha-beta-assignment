@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include "Node.h"
+#include "node.h"
 
 bool ReadInputFile(Node* &inOutNode)
 {
@@ -51,9 +51,7 @@ int main()
 		return -1;
 	}
 
-	std::cout << *rootNode << "\n";
 	rootNode->ExpandForWhiteTurn();
-	std::cout << *rootNode << "\n";
 
 	return 0;
 }
