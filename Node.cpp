@@ -155,7 +155,6 @@ bool Node::CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std
 		mAlpha = std::max(mAlpha, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
 		if(mAlpha >= mBeta)
 		{
-			std::cout << "Alpha pruned!\nAlpha:" << mAlpha << "\nBeta:" << mBeta << "\n";
 			inStringBuf.pop_back();
 			return true;
 		}
@@ -165,13 +164,84 @@ bool Node::CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std
 		mBeta = std::min(mBeta, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
 		if(mBeta <= mAlpha)
 		{
-			std::cout << "Beta pruned!\nAlpha:" << mAlpha << "\nBeta:" << mBeta << "\n";
 			inStringBuf.pop_back();
 			return true;
 		}
 	}
 	inStringBuf.pop_back();
 	return false;
+}
+
+void Node::PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex, int inNodePositionIndex)
+{
+	std::stringstream ss;
+	int forwardMove = mIsWhiteTurn ? -1 : 1;
+	std::string player = mIsWhiteTurn ? "Player A" : "Player B";
+	Piece p = inPieces[inPieceIndex];
+	Piece upLeftPiece = GetPieceAtCoord(p.mPosX - 1, p.mPosY + forwardMove);
+	Piece upRightPiece = GetPieceAtCoord(p.mPosX + 1, p.mPosY + forwardMove);
+	Piece upCenterPiece = GetPieceAtCoord(p.mPosX, p.mPosY + forwardMove);
+	ss << "Skipping " << player << "'s moves: " ;
+	switch(inNodePositionIndex)
+	{
+		case 0:
+			//Pruned after move left
+			if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upLeftPiece.mPosX << ", " << upLeftPiece.mPosY << "),";
+			}
+			if(upCenterPiece.mType == 'X')
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
+			}
+			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+			}
+			break;
+		case 1:
+			//Pruned after move center
+			if(upCenterPiece.mType == 'X')
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
+			}
+			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+			}
+			break;
+		default:
+			//Pruned after right no need to print anything about this node
+			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+			}
+			break;
+	}
+	if(inPieceIndex < inPieces.size())
+	{
+		for(int i = inPieceIndex + 1; i < inPieces.size(); ++i)
+		{
+			p = inPieces[i];
+			upLeftPiece = GetPieceAtCoord(p.mPosX - 1, p.mPosY + forwardMove);
+			upRightPiece = GetPieceAtCoord(p.mPosX + 1, p.mPosY + forwardMove);
+			upCenterPiece = GetPieceAtCoord(p.mPosX, p.mPosY + forwardMove);
+			if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upLeftPiece.mPosX << ", " << upLeftPiece.mPosY << "),";
+			}
+			if(upCenterPiece.mType == 'X')
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
+			}
+			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
+			{
+				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+			}
+		}
+	}
+	ss << "; Alpha = " << mAlpha << "; Beta = " << mBeta << "\n";
+	std::cout << ss.str();
 }
 
 int Node::Expand(const std::vector<Piece> &inPieces, std::vector<std::string>& inStringBuf)
@@ -187,30 +257,25 @@ int Node::Expand(const std::vector<Piece> &inPieces, std::vector<std::string>& i
 
 		if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
 		{
-			std::cout << "LEFT\n";
 			if(CreateNewNode(i, upLeftPiece, inStringBuf))
 			{
+				PrintPrunedNodes(inPieces, i, 0);
 				break;
 			}
 		}
-		if(mDepth == 1)
-		{
-			std::string something;
-			std::cin >> something;
-		}
 		if(upCenterPiece.mType == 'X')
 		{
-			std::cout << "CENTER\n";
 			if(CreateNewNode(i, upCenterPiece, inStringBuf))
 			{
+				PrintPrunedNodes(inPieces, i, 1);
 				break;
 			}
 		}
 		if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
 		{
-			std::cout << "RIGHT\n";
 			if(CreateNewNode(i, upRightPiece, inStringBuf))
 			{
+				PrintPrunedNodes(inPieces, i, 2);
 				break;
 			}
 		}

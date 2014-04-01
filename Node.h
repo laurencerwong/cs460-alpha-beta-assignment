@@ -39,6 +39,7 @@ typedef struct Node
 	int ExpandForWhiteTurn(int alpha, int beta, std::vector<std::string>& inStringBuf);
 	int Expand(const std::vector<Piece> &myPieces, std::vector<std::string>& inStringBuf);
 	bool CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std::string>& inStringBuf);
+	void PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex, int inNodePositionIndex);
 
 	friend std::ostream& operator<< (std::ostream& os, const Node& n);
 	
