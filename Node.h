@@ -2,6 +2,7 @@
 #define NODE_H
 
 #include <vector>
+#include <sstream>
 #include <iostream>
 
 //constants
@@ -27,29 +28,29 @@ typedef struct Piece
 
 typedef struct Node
 {
-	Node() : mIsWhiteTurn(true) { };
+	Node() : mIsWhiteTurn(true), mDepth(0)  { };
 	Node(bool inIsWhiteTurn) : mIsWhiteTurn(inIsWhiteTurn) { };
-	Node(const Node& inNode);
 
 	void AddPiece(int x, int y, char type);
 	const Piece GetPieceAtCoord(int inX, int inY) const;	
-	void MovePieceToCoord(int inIndex, int inX, int inY);
+	void MovePieceToCoord(int inIndex, int inX, int inY, std::vector<std::string>& inStringBuf);
 	void RemovePieceAtCoord( int inX, int inY);
 	bool PiecesReachedY(const std::vector<Piece> &inPieces, const int inY);
-	int ExpandForWhiteTurn();
-	int Expand(const std::vector<Piece> &myPieces);
+	int ExpandForWhiteTurn(int alpha, int beta, std::vector<std::string>& inStringBuf);
+	int Expand(const std::vector<Piece> &myPieces, std::vector<std::string>& inStringBuf);
+	bool CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std::string>& inStringBuf);
 
 	friend std::ostream& operator<< (std::ostream& os, const Node& n);
 	
 	const Piece mBlankPiece;
-	int mID;
-	int mHeuristic;
+	int mDepth;
+	int mAlpha, mBeta;
 
 	bool mIsWhiteTurn;
 
 	std::vector<Piece> mBlackPieces;
 	std::vector<Piece> mWhitePieces;
-	std::vector<Node *> mChildren;
+	std::vector<Node> mChildren;
 	
 } Node;
 

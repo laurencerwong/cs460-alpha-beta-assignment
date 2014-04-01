@@ -1,10 +1,10 @@
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include "node.h"
 
-bool ReadInputFile(Node* &inOutNode)
+bool ReadInputFile(Node &inOutNode)
 {
-	inOutNode = new Node();
 
 	std::ifstream file("input.txt", std::ios::in);
 	std::cout << "Opening input.txt\n";
@@ -26,7 +26,7 @@ bool ReadInputFile(Node* &inOutNode)
 		{
 			for(int i = 0; i < line.size(); ++i)
 			{
-				inOutNode->AddPiece(i, currentLineInFile, line[i]);
+				inOutNode.AddPiece(i, currentLineInFile, line[i]);
 			}	
 			++currentLineInFile;
 		}
@@ -44,14 +44,16 @@ bool ReadInputFile(Node* &inOutNode)
 
 int main()
 {
-	Node *rootNode = NULL;
+	std::vector<std::string> stringBuf;
+	Node rootNode;
 	if(!ReadInputFile(rootNode))
 	{
 		std::cout << "Error occurred while reading file.  Aborting...\n";
 		return -1;
 	}
 
-	rootNode->ExpandForWhiteTurn();
+	rootNode.ExpandForWhiteTurn(-100000, 1000000, stringBuf);
+	std::cout << "Final alpha: " << rootNode.mAlpha << ", Final beta: " << rootNode.mBeta << "\n";
 
 	return 0;
 }

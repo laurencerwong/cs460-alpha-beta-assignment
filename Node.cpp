@@ -1,14 +1,7 @@
 #include "node.h"
 #include <sstream>
 #include <iostream>
-
-Node::Node(const Node& inNode)
-{
-	mIsWhiteTurn = !inNode.mIsWhiteTurn;	
-
-	mBlackPieces = inNode.mBlackPieces;
-	mWhitePieces = inNode.mWhitePieces;
-}
+#include <algorithm>
 
 void Node::AddPiece(int inX, int inY, char inType)
 {
@@ -48,11 +41,15 @@ const Piece Node::GetPieceAtCoord(int inX, int inY) const
 	return BlankPiece;
 }
 
-void Node::MovePieceToCoord(int inIndexToArray, int inX, int inY)
+void Node::MovePieceToCoord(int inIndexToArray, int inX, int inY, std::vector<std::string>& inStringBuf)
 {
+	std::stringstream stringStream;
 	std::vector<Piece> *mPieces = !mIsWhiteTurn ? &mWhitePieces : &mBlackPieces;	
+	//new state changes to previous state, so player B will actually be moving player A's pieces
 	Piece* movingPiece = &mPieces->data()[inIndexToArray];
-	std::cout << "Moving " << *movingPiece << " to (" << inX << ", " << inY << ")\n";
+	stringStream << "Player " << (!mIsWhiteTurn ? "A" : "B") << " moves piece at (" << movingPiece->mPosX << ", " << movingPiece->mPosY << ") to (" << inX << ", " << inY << ")\n";
+	//std::cout << "Moving " << *movingPiece << " to (" << inX << ", " << inY << ")\n";
+	inStringBuf.push_back(stringStream.str());
 	RemovePieceAtCoord(inX, inY);
 	movingPiece->mPosX = inX;
 	movingPiece->mPosY = inY;
@@ -109,73 +106,115 @@ bool Node::PiecesReachedY(const std::vector<Piece> &inPieces, const int inY)
 	}
 	return false;
 }
-
-int Node::ExpandForWhiteTurn()
+void PrintStringBuf(const std::vector<std::string>& inStringBuf)
 {
-	std::cout << *this << "\n";
+	for(int i = 0; i < inStringBuf.size(); ++i)
+	{
+		std::cout << inStringBuf[i];
+	}
+}
+
+int Node::ExpandForWhiteTurn(int alpha, int beta, std::vector<std::string>& inStringBuf)
+{
+	mAlpha = alpha;
+	mBeta = beta;
 	if(!mBlackPieces.size() || PiecesReachedY(mWhitePieces, 0))
 	{
+		PrintStringBuf(inStringBuf);
 		std::cout << "White won!\n";
 		return 1;
 	}
-	if(!mWhitePieces.size() || PiecesReachedY(mBlackPieces, MAX_HEIGHT - 1))
+	else if(!mWhitePieces.size() || PiecesReachedY(mBlackPieces, MAX_HEIGHT))
 	{
+		PrintStringBuf(inStringBuf);
 		std::cout << "Black won!\n";
 		return -1;
 	}
 	if(mIsWhiteTurn)
 	{
-		return Expand(mWhitePieces);
+		int returnVal = Expand(mWhitePieces, inStringBuf);
+		return returnVal;
 	}
 	else
 	{
-		return Expand(mBlackPieces);
+		int returnVal = Expand(mBlackPieces, inStringBuf);
+		return returnVal;
 	}
 }
 
-int Node::Expand(const std::vector<Piece> &inPieces)
+bool Node::CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std::string>& inStringBuf)
 {
+	Node newNode;
+	newNode.mBlackPieces = mBlackPieces;
+	newNode.mWhitePieces = mWhitePieces;
+	newNode.mIsWhiteTurn = !mIsWhiteTurn;
+	newNode.MovePieceToCoord(inPieceIndex, inPiece.mPosX, inPiece.mPosY, inStringBuf);
+	newNode.mDepth = mDepth + 1;
+	if(mIsWhiteTurn) //MAX
+	{
+		mAlpha = std::max(mAlpha, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
+		if(mAlpha >= mBeta)
+		{
+			std::cout << "Alpha pruned!\nAlpha:" << mAlpha << "\nBeta:" << mBeta << "\n";
+			inStringBuf.pop_back();
+			return true;
+		}
+	}
+	else //MIN
+	{
+		mBeta = std::min(mBeta, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
+		if(mBeta <= mAlpha)
+		{
+			std::cout << "Beta pruned!\nAlpha:" << mAlpha << "\nBeta:" << mBeta << "\n";
+			inStringBuf.pop_back();
+			return true;
+		}
+	}
+	inStringBuf.pop_back();
+	return false;
+}
+
+int Node::Expand(const std::vector<Piece> &inPieces, std::vector<std::string>& inStringBuf)
+{
+	std::stringstream stringStream;
 	int forwardMove = mIsWhiteTurn ? -1 : 1;
-	std::cout << (mIsWhiteTurn ? "White turn\n" : "Black turn\n");
-	std::cout << "Expanding nodes\n";
-	std::cout << "inPieces.size = " << inPieces.size() << "\n";
 	for(int i = 0; i < inPieces.size(); ++i)
 	{
 		Piece p = inPieces[i];
-		std::cout << "Exploring moves for piece: " << p.mType << " at (" << p.mPosX << ", " << p.mPosY << ")\n";
 		const Piece upLeftPiece = GetPieceAtCoord(p.mPosX - 1, p.mPosY + forwardMove);
-		//std::cout << "upLeftPiece = " << upLeftPiece << "\n";
 		const Piece upRightPiece = GetPieceAtCoord(p.mPosX + 1, p.mPosY + forwardMove);
-		//std::cout << "upRightPiece = " << upRightPiece << "\n";
 		const Piece upCenterPiece = GetPieceAtCoord(p.mPosX, p.mPosY + forwardMove);
-		//std::cout << "upCenterPiece = " << upCenterPiece << "\n";
 
-		if(p.mPosX > 0 && upLeftPiece.mType != p.mType)//upLeftPiece.mType != 'X' && upLeftPiece.mType != p.mType)
+		if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
 		{
-			std::cout << "Went left\n";
-			Node* newNode = new Node(*this);
-			mChildren.push_back(newNode);
-			newNode->MovePieceToCoord(i, upLeftPiece.mPosX, upLeftPiece.mPosY);
-			return newNode->ExpandForWhiteTurn();
+			std::cout << "LEFT\n";
+			if(CreateNewNode(i, upLeftPiece, inStringBuf))
+			{
+				break;
+			}
 		}
-		if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)//upRightPiece.mType != 'X' && upRightPiece.mType != p.mType)
+		if(mDepth == 1)
 		{
-			std::cout << "Went right\n";
-			Node* newNode = new Node(*this);
-			mChildren.push_back(newNode);
-			newNode->MovePieceToCoord(i, upRightPiece.mPosX, upRightPiece.mPosY);
-			return newNode->ExpandForWhiteTurn();
+			std::string something;
+			std::cin >> something;
 		}
-		if(upCenterPiece.mType == 'X')//upCenterPiece.mType == 'X')
+		if(upCenterPiece.mType == 'X')
 		{
-			//std::cout << p << "'s center is unmovable\n";
-			//MovePieceToCoord(i, upCenterPiece.mPosX, upCenterPiece.mPosY);
-			std::cout << "Went center\n";
-			Node* newNode = new Node(*this);
-			mChildren.push_back(newNode);
-			newNode->MovePieceToCoord(i, p.mPosX, p.mPosY + forwardMove);
-			return newNode->ExpandForWhiteTurn();
+			std::cout << "CENTER\n";
+			if(CreateNewNode(i, upCenterPiece, inStringBuf))
+			{
+				break;
+			}
+		}
+		if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
+		{
+			std::cout << "RIGHT\n";
+			if(CreateNewNode(i, upRightPiece, inStringBuf))
+			{
+				break;
+			}
 		}
 	}
+	return mIsWhiteTurn ? mAlpha : mBeta;
 }
 
