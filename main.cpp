@@ -53,7 +53,25 @@ int main()
 	}
 
 	rootNode.ExpandForWhiteTurn(-100000, 1000000, stringBuf);
-	std::cout << "Final alpha: " << rootNode.mAlpha << ", Final beta: " << rootNode.mBeta << "\n";
+	std::cout << "Expansions Completed\n";
+	//Prints out the first optimal child
+	std::string answerString;
+	for(int i = 0; i < rootNode.mChildren.size(); ++i)
+	{
+		if(rootNode.mChildren[i].mValue == 1)
+		{
+			answerString = rootNode.mChildren[i].movementString;
+			break;
+		}
+	}
+	if(answerString.size())
+	{
+		std::cout << "Answer: " << answerString << "\n";
+	}
+	else
+	{
+		std::cout << "Answer: There is no optimal move\n";
+	}
 
 	return 0;
 }

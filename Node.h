@@ -43,9 +43,10 @@ typedef struct Node
 
 	friend std::ostream& operator<< (std::ostream& os, const Node& n);
 	
-	const Piece mBlankPiece;
 	int mDepth;
-	int mAlpha, mBeta;
+	int mAlpha, mBeta, mValue;
+
+	std::string movementString;
 
 	bool mIsWhiteTurn;
 

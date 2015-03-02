@@ -47,8 +47,8 @@ void Node::MovePieceToCoord(int inIndexToArray, int inX, int inY, std::vector<st
 	std::vector<Piece> *mPieces = !mIsWhiteTurn ? &mWhitePieces : &mBlackPieces;	
 	//new state changes to previous state, so player B will actually be moving player A's pieces
 	Piece* movingPiece = &mPieces->data()[inIndexToArray];
-	stringStream << "Player " << (!mIsWhiteTurn ? "A" : "B") << " moves piece at (" << movingPiece->mPosX << ", " << movingPiece->mPosY << ") to (" << inX << ", " << inY << ")\n";
-	//std::cout << "Moving " << *movingPiece << " to (" << inX << ", " << inY << ")\n";
+	stringStream << "Player " << (!mIsWhiteTurn ? "A" : "B") << " moves piece at (" << movingPiece->mPosY << ", " << movingPiece->mPosX << ") to (" << inY << ", " << inX << ")\n";
+	movementString = stringStream.str();
 	inStringBuf.push_back(stringStream.str());
 	RemovePieceAtCoord(inX, inY);
 	movingPiece->mPosX = inX;
@@ -121,13 +121,11 @@ int Node::ExpandForWhiteTurn(int alpha, int beta, std::vector<std::string>& inSt
 	if(!mBlackPieces.size() || PiecesReachedY(mWhitePieces, 0))
 	{
 		PrintStringBuf(inStringBuf);
-		std::cout << "White won!\n";
 		return 1;
 	}
-	else if(!mWhitePieces.size() || PiecesReachedY(mBlackPieces, MAX_HEIGHT))
+	else if(!mWhitePieces.size() || PiecesReachedY(mBlackPieces, MAX_HEIGHT - 1))
 	{
 		PrintStringBuf(inStringBuf);
-		std::cout << "Black won!\n";
 		return -1;
 	}
 	if(mIsWhiteTurn)
@@ -144,32 +142,38 @@ int Node::ExpandForWhiteTurn(int alpha, int beta, std::vector<std::string>& inSt
 
 bool Node::CreateNewNode(int inPieceIndex, const Piece& inPiece, std::vector<std::string>& inStringBuf)
 {
+	bool willPrune = false;
 	Node newNode;
 	newNode.mBlackPieces = mBlackPieces;
 	newNode.mWhitePieces = mWhitePieces;
 	newNode.mIsWhiteTurn = !mIsWhiteTurn;
 	newNode.MovePieceToCoord(inPieceIndex, inPiece.mPosX, inPiece.mPosY, inStringBuf);
 	newNode.mDepth = mDepth + 1;
+	newNode.mValue = newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf);
 	if(mIsWhiteTurn) //MAX
 	{
-		mAlpha = std::max(mAlpha, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
+		mAlpha = std::max(mAlpha, newNode.mValue);
 		if(mAlpha >= mBeta)
 		{
-			inStringBuf.pop_back();
-			return true;
+			willPrune = true;
 		}
 	}
 	else //MIN
 	{
-		mBeta = std::min(mBeta, newNode.ExpandForWhiteTurn(mAlpha, mBeta, inStringBuf));
+		mBeta = std::min(mBeta, newNode.mValue);
 		if(mBeta <= mAlpha)
 		{
-			inStringBuf.pop_back();
-			return true;
+			willPrune = true;
 		}
 	}
+	if(newNode.mDepth == 1)
+	{
+		mChildren.push_back(newNode);
+	}
+
 	inStringBuf.pop_back();
-	return false;
+
+	return willPrune;
 }
 
 void Node::PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex, int inNodePositionIndex)
@@ -186,36 +190,24 @@ void Node::PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex
 	{
 		case 0:
 			//Pruned after move left
-			if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
-			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upLeftPiece.mPosX << ", " << upLeftPiece.mPosY << "),";
-			}
 			if(upCenterPiece.mType == 'X')
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upCenterPiece.mPosY << ", " << upCenterPiece.mPosX << "),";
 			}
 			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upRightPiece.mPosY << ", " << upRightPiece.mPosX << "),";
 			}
 			break;
 		case 1:
 			//Pruned after move center
-			if(upCenterPiece.mType == 'X')
-			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
-			}
 			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upRightPiece.mPosY << ", " << upRightPiece.mPosX << "),";
 			}
 			break;
 		default:
 			//Pruned after right no need to print anything about this node
-			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
-			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
-			}
 			break;
 	}
 	if(inPieceIndex < inPieces.size())
@@ -228,15 +220,15 @@ void Node::PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex
 			upCenterPiece = GetPieceAtCoord(p.mPosX, p.mPosY + forwardMove);
 			if(p.mPosX > 0 && upLeftPiece.mType != p.mType)
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upLeftPiece.mPosX << ", " << upLeftPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upLeftPiece.mPosY << ", " << upLeftPiece.mPosX << "),";
 			}
 			if(upCenterPiece.mType == 'X')
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upCenterPiece.mPosX << ", " << upCenterPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upCenterPiece.mPosY << ", " << upCenterPiece.mPosX << "),";
 			}
 			if(p.mPosX < MAX_WIDTH - 1  && upRightPiece.mType != p.mType)
 			{
-				ss << "(" << p.mPosX << ", " << p.mPosY << ") to (" << upRightPiece.mPosX << ", " << upRightPiece.mPosY << "),";
+				ss << "(" << p.mPosY << ", " << p.mPosX << ") to (" << upRightPiece.mPosY << ", " << upRightPiece.mPosX << "),";
 			}
 		}
 	}
@@ -246,7 +238,6 @@ void Node::PrintPrunedNodes(const std::vector<Piece> &inPieces, int inPieceIndex
 
 int Node::Expand(const std::vector<Piece> &inPieces, std::vector<std::string>& inStringBuf)
 {
-	std::stringstream stringStream;
 	int forwardMove = mIsWhiteTurn ? -1 : 1;
 	for(int i = 0; i < inPieces.size(); ++i)
 	{
